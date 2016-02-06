@@ -130,8 +130,9 @@
   (let ((pool-size (length gene-pool)))
     (do ((genome (elt gene-pool (random pool-size))
                  (elt gene-pool (random pool-size))))
-        ((>= (/ (fitness problem genome) highest-fitness) (random 1.0))
+        ((>= (/ highest-fitness (fitness problem genome)) (random 1.0))
          genome))))
+;        ((>= (/ highest-fitness (fitness problem genome)) (random 1.0))
 
 ;; (defun evolve-gene-pool (gene-pool problem mutation-rate)
 ;;   "Create a new gene pool of the same size as GENE-POOL by replacing

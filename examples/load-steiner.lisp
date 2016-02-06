@@ -11,7 +11,7 @@
 (defparameter *five-point-problem*
   (make-steiner-problem '((150 0) (450 0) (0 260) (600 260) (300 433)) 7))
 
-(solve-steiner *five-point-problem* 1000 500 0.02)
+(solve-steiner *five-point-problem* 1000 1000 0.02)
 
 (defparameter *panda-problem*
       (make-steiner-problem
@@ -39,3 +39,4 @@
 ;; Nodes = #((150 0) (450 0) (0 260) (600 260) (300 433) (854 259) (300 260)
 ;;           (397 122) (150 173) (450 173) (278 371) (300 377))
 ;; Connections = ((6 8) (6 9) (6 11) (4 11) (3 9) (2 8) (1 9) (0 8))
+
