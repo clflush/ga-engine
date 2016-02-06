@@ -1,5 +1,8 @@
 ;; A solution to Steiner networks using a genetic algorithm engine.
 ;; Copyright Patrick May (patrick@softwarematters.org)
+
+(declaim (optimize (speed 3) (safety 0) (debug 0)))
+
 (in-package :org.softwarematters.ga.steiner)
 
 ;; Memoizing utility from Paul Graham's "On Lisp", page 65.
@@ -224,6 +227,7 @@
   returns T if the first is more fit according to the characteristics of
   the PROBLEM."
   (memoize (lesser-comparator problem)))
+;  (lesser-comparator problem))
 
 (defun solve-steiner (problem population-size generations mutation-rate)
   "Run the GA engine against the PROBLEM for GENERATIONS generations and

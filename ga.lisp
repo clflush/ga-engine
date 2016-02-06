@@ -2,6 +2,8 @@
 ;;
 ;; Copyright Patrick May (patrick@softwarematters.org)
 
+(declaim (optimize (speed 3) (safety 0) (debug 0)))
+
 (in-package :org.softwarematters.ga)
 
 ;; Utility functions.
@@ -106,29 +108,64 @@
                 genome-two))
           gene-pool))
 
-(defun tournament-select (gene-pool fitness-comparator
-                          &key (tournament-size 2))
+(defparameter *tournament-select-percentage* 0.1)
+
+(defun tournament-select (gene-pool problem
+                          &key (select-percent *tournament-select-percentage*))
   "Randomly select TOURNAMENT-SIZE genomes from the GENE-POOL and apply
   FITNESS-COMPARATOR to return the best one.  FITNESS-COMPARATOR must
   take two genomes as arguments and return T if the first is the the
   most fit of the two."
   (let* ((pool-size (length gene-pool))
+         (tournament-size (* pool-size select-percent))
          (tournament nil))
     (while (< (length tournament) tournament-size)
       (pushnew (elt gene-pool (random pool-size)) tournament))
-    (most-fit-genome tournament fitness-comparator)))
+    (most-fit-genome tournament (fitness-comparator problem))))
 
-(defun evolve-gene-pool (gene-pool fitness-comparator mutation-rate)
+(defun roulette-select (gene-pool problem highest-fitness)
+  "Randomly select a genomes from the GENE-POOL returning the first where
+  the fitness of the genome divided by the HIGHEST-FITNESS is greater
+  than a randomly generated percentage."
+  (let ((pool-size (length gene-pool)))
+    (do ((genome (elt gene-pool (random pool-size))
+                 (elt gene-pool (random pool-size))))
+        ((>= (/ (fitness problem genome) highest-fitness) (random 1.0))
+         genome))))
+
+;; (defun evolve-gene-pool (gene-pool problem mutation-rate)
+;;   "Create a new gene pool of the same size as GENE-POOL by replacing
+;;   half the population with mutated offspring of tournament selection
+;;   winners selected by FITNESS-COMPARATOR.  The other half of the
+;;   population consists of the parent genomes.  MUTATION-RATE must be
+;;   between 0 and 1."
+;;   (let ((size (length gene-pool))
+;;         (new-pool nil))
+;;     (dotimes (i (/ size 4) new-pool)
+;;       (let* ((parent-one (tournament-select gene-pool problem))
+;;              (parent-two (tournament-select gene-pool problem))
+;;              (children (mapcar (lambda (genome)
+;;                                  (mutate-genome genome mutation-rate))
+;;                                (single-crossover parent-one parent-two))))
+;;         (push (copy-seq parent-one) new-pool)
+;;         (push (copy-seq parent-two) new-pool)
+;;         (push (car children) new-pool)
+;;         (push (cadr children) new-pool)))))
+
+(defun evolve-gene-pool (gene-pool problem mutation-rate)
   "Create a new gene pool of the same size as GENE-POOL by replacing
   half the population with mutated offspring of tournament selection
   winners selected by FITNESS-COMPARATOR.  The other half of the
   population consists of the parent genomes.  MUTATION-RATE must be
   between 0 and 1."
   (let ((size (length gene-pool))
+        (highest-fitness
+         (fitness problem (most-fit-genome gene-pool
+                                           (fitness-comparator problem))))
         (new-pool nil))
     (dotimes (i (/ size 4) new-pool)
-      (let* ((parent-one (tournament-select gene-pool fitness-comparator))
-             (parent-two (tournament-select gene-pool fitness-comparator))
+      (let* ((parent-one (roulette-select gene-pool problem highest-fitness))
+             (parent-two (roulette-select gene-pool problem highest-fitness))
              (children (mapcar (lambda (genome)
                                  (mutate-genome genome mutation-rate))
                                (single-crossover parent-one parent-two))))
@@ -209,6 +246,6 @@
         (format t "~&Generation:  ~D, best fitness = ~A~%"
                 generation
                 (fitness problem (most-fit-genome gene-pool comparator))))
-      (setf gene-pool (evolve-gene-pool gene-pool comparator mutation-rate))
+      (setf gene-pool (evolve-gene-pool gene-pool problem mutation-rate))
       (incf generation))
     gene-pool))
