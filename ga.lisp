@@ -112,10 +112,10 @@
 
 (defun tournament-select (gene-pool problem
                           &key (select-percent *tournament-select-percentage*))
-  "Randomly select TOURNAMENT-SIZE genomes from the GENE-POOL and apply
-  FITNESS-COMPARATOR to return the best one.  FITNESS-COMPARATOR must
-  take two genomes as arguments and return T if the first is the the
-  most fit of the two."
+  "Randomly select a pool of genomes that are TOURNAMENT-SELECT-PERCENTAGE
+  of the full GENE-POOL and apply FITNESS-COMPARATOR to return the best one.
+  FITNESS-COMPARATOR must take two genomes as arguments and return T if the
+  first is the the most fit of the two."
   (let* ((pool-size (length gene-pool))
          (tournament-size (* pool-size select-percent))
          (tournament nil))
@@ -132,26 +132,6 @@
                  (elt gene-pool (random pool-size))))
         ((>= (/ highest-fitness (fitness problem genome)) (random 1.0))
          genome))))
-;        ((>= (/ highest-fitness (fitness problem genome)) (random 1.0))
-
-;; (defun evolve-gene-pool (gene-pool problem mutation-rate)
-;;   "Create a new gene pool of the same size as GENE-POOL by replacing
-;;   half the population with mutated offspring of tournament selection
-;;   winners selected by FITNESS-COMPARATOR.  The other half of the
-;;   population consists of the parent genomes.  MUTATION-RATE must be
-;;   between 0 and 1."
-;;   (let ((size (length gene-pool))
-;;         (new-pool nil))
-;;     (dotimes (i (/ size 4) new-pool)
-;;       (let* ((parent-one (tournament-select gene-pool problem))
-;;              (parent-two (tournament-select gene-pool problem))
-;;              (children (mapcar (lambda (genome)
-;;                                  (mutate-genome genome mutation-rate))
-;;                                (single-crossover parent-one parent-two))))
-;;         (push (copy-seq parent-one) new-pool)
-;;         (push (copy-seq parent-two) new-pool)
-;;         (push (car children) new-pool)
-;;         (push (cadr children) new-pool)))))
 
 (defun evolve-gene-pool (gene-pool problem mutation-rate)
   "Create a new gene pool of the same size as GENE-POOL by replacing
@@ -160,13 +140,10 @@
   population consists of the parent genomes.  MUTATION-RATE must be
   between 0 and 1."
   (let ((size (length gene-pool))
-        (highest-fitness
-         (fitness problem (most-fit-genome gene-pool
-                                           (fitness-comparator problem))))
         (new-pool nil))
     (dotimes (i (/ size 4) new-pool)
-      (let* ((parent-one (roulette-select gene-pool problem highest-fitness))
-             (parent-two (roulette-select gene-pool problem highest-fitness))
+      (let* ((parent-one (tournament-select gene-pool problem))
+             (parent-two (tournament-select gene-pool problem))
              (children (mapcar (lambda (genome)
                                  (mutate-genome genome mutation-rate))
                                (single-crossover parent-one parent-two))))
@@ -174,6 +151,28 @@
         (push (copy-seq parent-two) new-pool)
         (push (car children) new-pool)
         (push (cadr children) new-pool)))))
+
+;; (defun evolve-gene-pool (gene-pool problem mutation-rate)
+;;   "Create a new gene pool of the same size as GENE-POOL by replacing
+;;   half the population with mutated offspring of tournament selection
+;;   winners selected by FITNESS-COMPARATOR.  The other half of the
+;;   population consists of the parent genomes.  MUTATION-RATE must be
+;;   between 0 and 1."
+;;   (let ((size (length gene-pool))
+;;         (highest-fitness
+;;          (fitness problem (most-fit-genome gene-pool
+;;                                            (fitness-comparator problem))))
+;;         (new-pool nil))
+;;     (dotimes (i (/ size 4) new-pool)
+;;       (let* ((parent-one (roulette-select gene-pool problem highest-fitness))
+;;              (parent-two (roulette-select gene-pool problem highest-fitness))
+;;              (children (mapcar (lambda (genome)
+;;                                  (mutate-genome genome mutation-rate))
+;;                                (single-crossover parent-one parent-two))))
+;;         (push (copy-seq parent-one) new-pool)
+;;         (push (copy-seq parent-two) new-pool)
+;;         (push (car children) new-pool)
+;;         (push (cadr children) new-pool)))))
 
 ;; Solution generators
 

@@ -11,7 +11,13 @@
 (defparameter *five-point-problem*
   (make-steiner-problem '((150 0) (450 0) (0 260) (600 260) (300 433)) 7))
 
-(solve-steiner *five-point-problem* 1000 1000 0.02)
+;(solve-steiner *five-point-problem* 1000 1000 0.02)
+;(solve-steiner *five-point-problem* 2000 250 0.02)
+
+(defparameter *five-point-smaller-problem*
+  (make-steiner-problem '((150 0) (450 0) (0 260) (600 260) (300 433)) 5))
+
+(solve-steiner *five-point-smaller-problem* 1000 250 0.02)
 
 (defparameter *panda-problem*
       (make-steiner-problem
