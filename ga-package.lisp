@@ -12,6 +12,7 @@
            #:gray-code->bit-vector
            #:integer->gray-code
            #:gray-code->integer
+           #:bit-vector->twos-complement
            #:make-genome
            #:mutate-genome
            #:single-crossover

@@ -54,6 +54,12 @@
   "Create a Gray code bit-vector from a positive integer."
   (bit-vector->gray-code (integer->bit-vector integer)))
 
+(defun bit-vector->twos-complement (bits)
+  "Convert a bit vector into an integer using two's complement rules."
+  (if (= 0 (bit bits 0))
+      (bit-vector->integer bits)
+      (- (1+ (bit-vector->integer (bit-not bits))))))
+
 ;; The genetic algorithm functions.
 
 (defun make-genome (length &optional (distribution 0.5))
