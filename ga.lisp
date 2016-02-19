@@ -123,7 +123,7 @@
   FITNESS-COMPARATOR must take two genomes as arguments and return T if the
   first is the the most fit of the two."
   (let* ((pool-size (length gene-pool))
-         (tournament-size (* pool-size select-percent))
+         (tournament-size (floor (* pool-size select-percent)))
          (tournament nil))
     (while (< (length tournament) tournament-size)
       (pushnew (elt gene-pool (random pool-size)) tournament))
@@ -212,20 +212,14 @@
           (push (mutate-genome (copy-seq genome) mutation-rate) new-pool))))
     new-pool))
 
-;; (new-pool (list)))
-;;     (dolist (genome sorted-gene-pool new-pool)
-;;       (dotimes (i 2)
-;;         (push (test-mutate-genome (copy-seq genome) mutations-per-genome)
-;;               new-pool)))))
-
 (defun evolve-gene-pool (gene-pool problem mutation-rate)
   "Create a new gene pool of the same size as GENE-POOL by replacing
   half the population with mutated offspring of tournament selection
   winners selected by FITNESS-COMPARATOR.  The other half of the
   population consists of the parent genomes.  MUTATION-RATE must be
   between 0 and 1."
-  (truncate-evolve gene-pool problem mutation-rate))
-;  (tournament-evolve gene-pool problem mutation-rate))
+  (tournament-evolve gene-pool problem mutation-rate))
+;  (truncate-evolve gene-pool problem mutation-rate))
 
 ;; Solution generators
 
@@ -284,21 +278,24 @@
                  (most-fit-genome gene-pool (fitness-comparator problem)))
         fitness)))
 
+(defun default-interim-results (problem gene-pool generation)
+  (let ((comparator (fitness-comparator problem)))
+    (format t "~&Generation:  ~D, best fitness = ~A~%"
+            generation
+            (fitness problem (most-fit-genome gene-pool comparator)))))
+  
 (defun solve (problem pool-size mutation-rate terminator
               &key (genome-bit-distribution 0.5)
-                   (write-interim-results t))
+                   (interim-result-writer #'default-interim-results))
   "Evolve a solution to PROBLEM using a gene pool of POOL-SIZE until
   TERMINATOR returns true.  Return the final gene pool."
   (let ((gene-pool (make-gene-pool pool-size
                                    (genome-length problem)
                                    genome-bit-distribution))
-        (comparator (fitness-comparator problem))
         (generation 0))
     (while (not (funcall terminator generation gene-pool))
-      (when write-interim-results
-        (format t "~&Generation:  ~D, best fitness = ~A~%"
-                generation
-                (fitness problem (most-fit-genome gene-pool comparator))))
+      (when interim-result-writer
+        (funcall interim-result-writer problem gene-pool generation))
       (setf gene-pool (evolve-gene-pool gene-pool problem mutation-rate))
       (incf generation))
     gene-pool))
