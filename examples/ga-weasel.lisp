@@ -1,5 +1,8 @@
 ;; An alternative implementation of Richard Dawkins' Weasel Program.
 ;; Copyright Patrick May (patrick@softwarematters.org)
+
+(declaim (optimize (speed 3) (safety 0) (debug 0)))
+
 (in-package :org.softwarematters.ga.weasel)
 
 (defun string->bit-vector (string)
