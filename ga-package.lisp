@@ -5,6 +5,7 @@
 (in-package :common-lisp-user)
 
 (defpackage :org.softwarematters.ga
+  (:nicknames :ga)
   (:use :common-lisp)
   (:export #:bit-vector->integer
            #:integer->bit-vector
@@ -30,4 +31,7 @@
            #:terminator
            #:generation-terminator
            #:fitness-terminator
+           #:tournament-selection
+           #:roulette-selection
+           #:truncation-selection
            #:solve))

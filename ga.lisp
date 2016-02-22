@@ -129,9 +129,10 @@
       (pushnew (elt gene-pool (random pool-size)) tournament))
     (most-fit-genome tournament (fitness-comparator problem))))
 
-(defun tournament-evolve (gene-pool problem mutation-rate
+
+(defun tournament-evolve (gene-pool problem mutation-operator
                           &key (select-percent *tournament-select-percentage*)
-                               (use-crossover nil))
+                               (crossover nil))
   "Evolve a new gene pool using tournament selection."
   (let ((size (length gene-pool))
         (new-pool nil))
@@ -140,15 +141,15 @@
                                             :select-percent select-percent))
              (parent-two (tournament-select gene-pool problem
                                             :select-percent select-percent))
-             (child-one (mutate-genome (copy-seq parent-one) mutation-rate))
-             (child-two (mutate-genome (copy-seq parent-two) mutation-rate)))
+             (child-one (funcall mutation-operator (copy-seq parent-one)))
+             (child-two (funcall mutation-operator (copy-seq parent-two))))
         (push parent-one new-pool)
         (push parent-two new-pool)
-        (when use-crossover
+        (when crossover
           (let ((children (single-crossover child-one child-two)))
             (push (car children) new-pool)
             (push (cadr children) new-pool)))
-        (unless use-crossover
+        (unless crossover
           (push child-one new-pool)
           (push child-two new-pool))))
     new-pool))
@@ -163,8 +164,8 @@
         ((>= (/ highest-fitness (fitness problem genome)) (random 1.0))
          genome))))
 
-(defun roulette-evolve (gene-pool problem mutation-rate
-                        &key (use-crossover nil))
+(defun roulette-evolve (gene-pool problem mutation-operator
+                        &key (crossover nil))
   "Evolve a new gene pool using roulette wheel selection."
   (let ((size (length gene-pool))
         (highest-fitness
@@ -174,15 +175,15 @@
     (while (< (length new-pool) size)
       (let* ((parent-one (roulette-select gene-pool problem highest-fitness))
              (parent-two (roulette-select gene-pool problem highest-fitness))
-             (child-one (mutate-genome (copy-seq parent-one) mutation-rate))
-             (child-two (mutate-genome (copy-seq parent-two) mutation-rate)))
+             (child-one (funcall mutation-operator (copy-seq parent-one)))
+             (child-two (funcall mutation-operator (copy-seq parent-two))))
         (push parent-one new-pool)
         (push parent-two new-pool)
-        (when use-crossover
+        (when crossover
           (let ((children (single-crossover child-one child-two)))
             (push (car children) new-pool)
             (push (cadr children) new-pool)))
-        (unless use-crossover
+        (unless crossover
           (push child-one new-pool)
           (push child-two new-pool))))
     new-pool))
@@ -207,7 +208,7 @@
           (setf (aref genome index) 1)
           (setf (aref genome index) 0)))))
 
-(defun truncate-evolve (gene-pool problem mutation-rate
+(defun truncate-evolve (gene-pool problem mutation-operator
                         &key (select-percent *truncate-select-percentage*))
   "Evolve a new gene pool using truncation selection."
   (let* ((size (length gene-pool))
@@ -219,7 +220,7 @@
     (while (< (length new-pool) size)
       (dolist (genome selected)
         (when (< (length new-pool) size)
-          (push (mutate-n-bits (copy-seq genome) 1) new-pool))))
+          (push (funcall mutation-operator (copy-seq genome)) new-pool))))
     new-pool))
 
 ;; Old version with unmutated parents
@@ -308,18 +309,53 @@
             generation
             (fitness problem (most-fit-genome gene-pool comparator)))))
   
-(defun solve (problem pool-size mutation-rate terminator
+(defun solve (problem pool-size terminator
               &key (genome-bit-distribution 0.5)
-                   (interim-result-writer #'default-interim-results))
+                   (interim-result-writer #'default-interim-results)
+                   (selection-method :tournament-selection)
+                   mutation-rate
+                   mutation-count
+                   crossover
+                   (tournament-select-percentage *tournament-select-percentage*)
+                   (truncate-select-percentage *truncate-select-percentage*))
   "Evolve a solution to PROBLEM using a gene pool of POOL-SIZE until
   TERMINATOR returns true.  Return the final gene pool."
-  (let ((gene-pool (make-gene-pool pool-size
-                                   (genome-length problem)
-                                   genome-bit-distribution))
-        (generation 0))
+  (flet ((make-mutation-operator ()
+           (cond ((and mutation-rate (not mutation-count))
+                  (lambda (genome)
+                    (mutate-genome genome mutation-rate)))
+                 ((and mutation-count (not mutation-rate))
+                  (lambda (genome)
+                    (mutate-n-bits genome mutation-count)))
+                 (t (error "Set exactly one of mutation rate or count."))))
+         (make-tournament-evolver (mutation-operator)
+           (lambda (gene-pool problem)
+             (tournament-evolve gene-pool problem mutation-operator
+                                :crossover crossover
+                                :select-percent tournament-select-percentage)))
+         (make-roulette-evolver (mutation-operator)
+           (lambda (gene-pool problem)
+             (roulette-evolve gene-pool problem mutation-operator
+                              :crossover crossover)))
+         (make-truncation-evolver (mutation-operator)
+           (lambda (gene-pool problem)
+             (tournament-evolve gene-pool problem mutation-operator
+                                :select-percent truncate-select-percentage))))
+    (let* ((mutation-operator (make-mutation-operator))
+           (evolve-gene-pool
+            (case selection-method
+              (:tournament-selection
+               (make-tournament-evolver mutation-operator))
+              (:roulette-selection (make-roulette-evolver mutation-operator))
+              (:truncation-selection
+               (make-truncation-evolver mutation-operator))))
+           (gene-pool (make-gene-pool pool-size
+                                      (genome-length problem)
+                                      genome-bit-distribution))
+           (generation 0))
     (while (not (funcall terminator generation gene-pool))
       (when interim-result-writer
         (funcall interim-result-writer problem gene-pool generation))
-      (setf gene-pool (evolve-gene-pool gene-pool problem mutation-rate))
+      (setf gene-pool (funcall evolve-gene-pool gene-pool problem))
       (incf generation))
-    gene-pool))
+    gene-pool)))
