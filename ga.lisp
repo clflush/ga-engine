@@ -199,18 +199,42 @@
                             (lambda (x y)
                               (funcall comparator y x)))))))
 
+(defun mutate-n-bits (genome n)
+  "Mutate exactly N bits in the GENOME."
+  (dotimes (i n genome)
+    (let ((index (random (length genome))))
+      (if (= 0 (aref genome index))
+          (setf (aref genome index) 1)
+          (setf (aref genome index) 0)))))
+
 (defun truncate-evolve (gene-pool problem mutation-rate
                         &key (select-percent *truncate-select-percentage*))
   "Evolve a new gene pool using truncation selection."
   (let* ((size (length gene-pool))
          (selected (truncate-select gene-pool problem
                                     :select-percent select-percent))
-         (new-pool (copy-seq selected)))
+         (new-pool (mapcar (lambda (genome)
+                             (mutate-n-bits (copy-seq genome) 1))
+                           selected)))
     (while (< (length new-pool) size)
       (dolist (genome selected)
         (when (< (length new-pool) size)
-          (push (mutate-genome (copy-seq genome) mutation-rate) new-pool))))
+          (push (mutate-n-bits (copy-seq genome) 1) new-pool))))
     new-pool))
+
+;; Old version with unmutated parents
+;; (defun truncate-evolve (gene-pool problem mutation-rate
+;;                         &key (select-percent *truncate-select-percentage*))
+;;   "Evolve a new gene pool using truncation selection."
+;;   (let* ((size (length gene-pool))
+;;          (selected (truncate-select gene-pool problem
+;;                                     :select-percent select-percent))
+;;          (new-pool (copy-seq selected)))
+;;     (while (< (length new-pool) size)
+;;       (dolist (genome selected)
+;;         (when (< (length new-pool) size)
+;;           (push (mutate-genome (copy-seq genome) mutation-rate) new-pool))))
+;;     new-pool))
 
 (defun evolve-gene-pool (gene-pool problem mutation-rate)
   "Create a new gene pool of the same size as GENE-POOL by replacing
@@ -218,8 +242,8 @@
   winners selected by FITNESS-COMPARATOR.  The other half of the
   population consists of the parent genomes.  MUTATION-RATE must be
   between 0 and 1."
-  (tournament-evolve gene-pool problem mutation-rate))
-;  (truncate-evolve gene-pool problem mutation-rate))
+;  (tournament-evolve gene-pool problem mutation-rate))
+  (truncate-evolve gene-pool problem mutation-rate))
 
 ;; Solution generators
 
