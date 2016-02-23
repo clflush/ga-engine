@@ -69,11 +69,6 @@
   (let ((genome (make-array length :element-type 'bit :initial-element 0)))
     (map-into genome (lambda () (if (> distribution (random 1.0)) 1 0)))))
 
-(defun mutate-genome (genome rate)
-  "Flip bits in the GENOME bit-vector with a percentage chance equal to
-  the specified RATE (ranging from 0 to 1)."
-  (bit-xor genome (make-genome (length genome) rate)))
-
 (defun single-crossover (parent-one parent-two)
   "Create two new genomes by crossing over PARENT-ONE and PARENT-TWO at
   a single, randomly selected point."
@@ -200,14 +195,6 @@
                             (lambda (x y)
                               (funcall comparator y x)))))))
 
-(defun mutate-n-bits (genome n)
-  "Mutate exactly N bits in the GENOME."
-  (dotimes (i n genome)
-    (let ((index (random (length genome))))
-      (if (= 0 (aref genome index))
-          (setf (aref genome index) 1)
-          (setf (aref genome index) 0)))))
-
 (defun truncate-evolve (gene-pool problem mutation-operator
                         &key (select-percent *truncate-select-percentage*))
   "Evolve a new gene pool using truncation selection."
@@ -222,29 +209,6 @@
         (when (< (length new-pool) size)
           (push (funcall mutation-operator (copy-seq genome)) new-pool))))
     new-pool))
-
-;; Old version with unmutated parents
-;; (defun truncate-evolve (gene-pool problem mutation-rate
-;;                         &key (select-percent *truncate-select-percentage*))
-;;   "Evolve a new gene pool using truncation selection."
-;;   (let* ((size (length gene-pool))
-;;          (selected (truncate-select gene-pool problem
-;;                                     :select-percent select-percent))
-;;          (new-pool (copy-seq selected)))
-;;     (while (< (length new-pool) size)
-;;       (dolist (genome selected)
-;;         (when (< (length new-pool) size)
-;;           (push (mutate-genome (copy-seq genome) mutation-rate) new-pool))))
-;;     new-pool))
-
-(defun evolve-gene-pool (gene-pool problem mutation-rate)
-  "Create a new gene pool of the same size as GENE-POOL by replacing
-  half the population with mutated offspring of tournament selection
-  winners selected by FITNESS-COMPARATOR.  The other half of the
-  population consists of the parent genomes.  MUTATION-RATE must be
-  between 0 and 1."
-;  (tournament-evolve gene-pool problem mutation-rate))
-  (truncate-evolve gene-pool problem mutation-rate))
 
 ;; Solution generators
 
@@ -308,7 +272,20 @@
     (format t "~&Generation:  ~D, best fitness = ~A~%"
             generation
             (fitness problem (most-fit-genome gene-pool comparator)))))
-  
+
+(defun mutate-genome (genome rate)
+  "Flip bits in the GENOME bit-vector with a percentage chance equal to
+  the specified RATE (ranging from 0 to 1)."
+  (bit-xor genome (make-genome (length genome) rate)))
+
+(defun mutate-n-bits (genome n)
+  "Mutate exactly N bits in the GENOME."
+  (dotimes (i n genome)
+    (let ((index (random (length genome))))
+      (if (= 0 (aref genome index))
+          (setf (aref genome index) 1)
+          (setf (aref genome index) 0)))))
+
 (defun solve (problem pool-size terminator
               &key (genome-bit-distribution 0.5)
                    (interim-result-writer #'default-interim-results)
@@ -339,8 +316,8 @@
                               :crossover crossover)))
          (make-truncation-evolver (mutation-operator)
            (lambda (gene-pool problem)
-             (tournament-evolve gene-pool problem mutation-operator
-                                :select-percent truncate-select-percentage))))
+             (truncate-evolve gene-pool problem mutation-operator
+                              :select-percent truncate-select-percentage))))
     (let* ((mutation-operator (make-mutation-operator))
            (evolve-gene-pool
             (case selection-method

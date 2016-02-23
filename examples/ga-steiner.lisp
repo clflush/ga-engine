@@ -58,7 +58,7 @@
                    :x-dimension max-x
                    :y-dimension max-y)))
 
-;; todo: eliminate need for x/y-coords to be 2^n - 1.
+;; TODO: eliminate need for x/y-coords to be 2^n - 1.
 
 (defmethod total-node-count ((problem steiner-problem))
   "Return the maximum number of nodes possible in the specified PROBLEM."
@@ -89,26 +89,6 @@
          (y-start (+ x-start x-bits)))
     (list (gray-code->integer (subseq genome x-start y-start))
           (gray-code->integer (subseq genome y-start (+ y-start y-bits))))))
-
-;; (defmethod variable-node-coords ((problem steiner-problem) genome index)
-;;   "Return a list containing the x and y coordinates contained in the
-;;   GENOME of the variable node identified by INDEX."
-;;   (let* ((x-bits (x-coord-bits problem))
-;;          (y-bits (y-coord-bits problem))
-;;          (x-start (* index (+ x-bits y-bits)))
-;;          (y-start (+ x-start x-bits)))
-;;     (list (bit-vector->integer (subseq genome x-start y-start))
-;;           (bit-vector->integer (subseq genome y-start (+ y-start y-bits))))))
-
-;; (defmethod variable-nodes ((problem steiner-problem) genome)
-;;   "Return a vector of the locations of the variable nodes in the
-;;   specified GENOME based on the characteristics of the particular
-;;   PROBLEM."
-;;   (let ((nodes (make-array 0 :element-type 'list
-;;                            :fill-pointer t
-;;                            :adjustable t)))
-;;     (dotimes (i (variable-node-count problem) nodes)
-;;       (vector-push-extend (variable-node-coords problem genome i) nodes))))
 
 (defmethod variable-nodes ((problem steiner-problem) genome)
   "Return a list of the locations of the variable nodes in the
@@ -227,15 +207,16 @@
   returns T if the first is more fit according to the characteristics of
   the PROBLEM."
   (memoize (lesser-comparator problem)))
-;  (lesser-comparator problem))
 
 (defun solve-steiner (problem population-size generations mutation-rate)
   "Run the GA engine against the PROBLEM for GENERATIONS generations and
   print the results."
   (let* ((gene-pool (solve problem
                            population-size
-                           mutation-rate
-                           (generation-terminator generations)))
+                           (generation-terminator generations)
+                           :selection-method :tournament-selection
+                           :mutation-rate mutation-rate
+                           :crossover t))
          (best-genome (most-fit-genome gene-pool
                                        (fitness-comparator problem))))
     (format t "~%Best = ~F~%Average = ~F~%Nodes = ~S~%Connections = ~S~%"
@@ -243,3 +224,4 @@
             (average-fitness problem gene-pool)
             (nodes problem best-genome)
             (connections problem best-genome))))
+

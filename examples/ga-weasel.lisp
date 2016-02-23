@@ -65,9 +65,11 @@
   (let* ((gene-pool
           (solve problem
                  population-size
-                 mutation-rate
                  (fitness-terminator problem
-                                     (length (target-genome problem)))))
+                                     (length (target-genome problem)))
+                 :selection-method :tournament-selection
+                 :mutation-rate mutation-rate
+                 :crossover t))
          (best-genome (most-fit-genome gene-pool
                                        (fitness-comparator problem))))
     (format t "~%Best = ~F~%Average = ~F~%"
