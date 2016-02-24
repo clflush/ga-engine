@@ -21,12 +21,14 @@
           (fitness problem best-genome)
           (average-fitness problem gene-pool)))
 
-; TODO:  try other selection models
+; TODO:  try tournament and roulette selection models
 ;        try crossover again
-;        try with fitness including number correct (?)
+;        try mutation-rate vs mutation-count
+;        enable binding site overlap
+;        try different population sizes
+;        try different recognizer
 ;        change crossover to use-crossover
 ;        add :MUTATE-PARENTS
 ;        replace dolists with mapcar in r-sequence
-
 
 
