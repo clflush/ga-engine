@@ -109,7 +109,7 @@
                 genome-two))
           gene-pool))
 
-(defparameter *tournament-select-percentage* 0.1)
+(defparameter *tournament-select-percentage* 0.2)
 
 (defun tournament-select (gene-pool problem
                           &key (select-percent *tournament-select-percentage*))
@@ -127,7 +127,8 @@
 
 (defun tournament-evolve (gene-pool problem mutation-operator
                           &key (select-percent *tournament-select-percentage*)
-                               (crossover nil))
+                               (use-crossover nil)
+                               (mutate-parents nil))
   "Evolve a new gene pool using tournament selection."
   (let ((size (length gene-pool))
         (new-pool nil))
@@ -140,11 +141,11 @@
              (child-two (funcall mutation-operator (copy-seq parent-two))))
         (push parent-one new-pool)
         (push parent-two new-pool)
-        (when crossover
+        (when use-crossover
           (let ((children (single-crossover child-one child-two)))
             (push (car children) new-pool)
             (push (cadr children) new-pool)))
-        (unless crossover
+        (unless use-crossover
           (push child-one new-pool)
           (push child-two new-pool))))
     new-pool))
@@ -160,7 +161,8 @@
          genome))))
 
 (defun roulette-evolve (gene-pool problem mutation-operator
-                        &key (crossover nil))
+                        &key (use-crossover nil)
+                             (mutate-parents nil))
   "Evolve a new gene pool using roulette wheel selection."
   (let ((size (length gene-pool))
         (highest-fitness
@@ -174,11 +176,11 @@
              (child-two (funcall mutation-operator (copy-seq parent-two))))
         (push parent-one new-pool)
         (push parent-two new-pool)
-        (when crossover
+        (when use-crossover
           (let ((children (single-crossover child-one child-two)))
             (push (car children) new-pool)
             (push (cadr children) new-pool)))
-        (unless crossover
+        (unless use-crossover
           (push child-one new-pool)
           (push child-two new-pool))))
     new-pool))
@@ -196,7 +198,8 @@
                               (funcall comparator y x)))))))
 
 (defun truncate-evolve (gene-pool problem mutation-operator
-                        &key (select-percent *truncate-select-percentage*))
+                        &key (select-percent *truncate-select-percentage*)
+                             (mutate-parents t))
   "Evolve a new gene pool using truncation selection."
   (let* ((size (length gene-pool))
          (selected (truncate-select gene-pool problem
@@ -292,7 +295,8 @@
                    (selection-method :tournament-selection)
                    mutation-rate
                    mutation-count
-                   crossover
+                   use-crossover
+                   mutate-parents
                    (tournament-select-percentage *tournament-select-percentage*)
                    (truncate-select-percentage *truncate-select-percentage*))
   "Evolve a solution to PROBLEM using a gene pool of POOL-SIZE until
@@ -308,12 +312,12 @@
          (make-tournament-evolver (mutation-operator)
            (lambda (gene-pool problem)
              (tournament-evolve gene-pool problem mutation-operator
-                                :crossover crossover
+                                :use-crossover use-crossover
                                 :select-percent tournament-select-percentage)))
          (make-roulette-evolver (mutation-operator)
            (lambda (gene-pool problem)
              (roulette-evolve gene-pool problem mutation-operator
-                              :crossover crossover)))
+                              :use-crossover use-crossover)))
          (make-truncation-evolver (mutation-operator)
            (lambda (gene-pool problem)
              (truncate-evolve gene-pool problem mutation-operator

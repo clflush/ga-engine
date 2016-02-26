@@ -5,6 +5,15 @@
 
 (in-package :org.softwarematters.ga.ev)
 
+;; Memoizing utility from Paul Graham's "On Lisp", page 65.
+(defun memoize (fn)
+  (let ((cache (make-hash-table :test #'equal)))
+    (lambda (&rest args)
+      (multiple-value-bind (val win) (gethash args cache)
+        (if win
+            val
+            (setf (gethash args cache) (apply fn args)))))))
+
 (defclass ev-problem ()
   ((number-of-possible-sites :initarg :number-of-possible-sites
                              :reader number-of-possible-sites)
@@ -197,7 +206,8 @@
   "Return a fitness comparator function that takes two genomes and
   returns T if the first is more fit according to the characteristics of
   the PROBLEM."
-  (greater-comparator problem))
+  (memoize (greater-comparator problem)))
+;  (greater-comparator problem))
 
 (defun ev-interim-result-writer (problem gene-pool generation)
   "Write interim results including Rsequence."
