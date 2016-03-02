@@ -331,14 +331,17 @@
            (lambda (gene-pool problem)
              (tournament-evolve gene-pool problem mutation-operator
                                 :use-crossover use-crossover
+                                :mutate-parents mutate-parents
                                 :select-percent tournament-select-percentage)))
          (make-roulette-evolver (mutation-operator)
            (lambda (gene-pool problem)
              (roulette-evolve gene-pool problem mutation-operator
-                              :use-crossover use-crossover)))
+                              :use-crossover use-crossover
+                              :mutate-parents mutate-parents)))
          (make-truncation-evolver (mutation-operator)
            (lambda (gene-pool problem)
              (truncate-evolve gene-pool problem mutation-operator
+                              :mutate-parents mutate-parents
                               :select-percent truncate-select-percentage))))
     (let* ((mutation-operator (make-mutation-operator))
            (evolve-gene-pool
@@ -351,7 +354,7 @@
            (gene-pool (make-gene-pool pool-size
                                       (genome-length problem)
                                       genome-bit-distribution))
-           (fitness (gene-pool-fitness problem gene-pool))
+;           (fitness (gene-pool-fitness problem gene-pool))
            (generation 0))
     (while (not (funcall terminator generation gene-pool))
       (when interim-result-writer
