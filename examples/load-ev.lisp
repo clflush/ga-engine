@@ -1,3 +1,6 @@
+;(ql:quickload :lparallel)
+;(setf lparallel:*kernel* (lparallel:make-kernel 4))
+
 (load (compile-file "../ga-package.lisp"))
 (load (compile-file "../ga.lisp"))
 (load (compile-file "ga-ev-package.lisp"))
@@ -43,7 +46,8 @@
          (gene-pool (solve problem 64 (ev-terminator problem 10000)
                            :selection-method :tournament-selection
                            :mutation-rate 0.005
-                           :interim-result-writer nil))
+                           :mutate-parents t
+                           :interim-result-writer #'ev-interim-result-writer))
          (best-genome (most-fit-genome gene-pool (fitness-comparator problem))))
     (format t "Best = ~F (Rseq = ~F)~%Average = ~F~%~%"
             (fitness problem best-genome)

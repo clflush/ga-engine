@@ -139,8 +139,12 @@
                                             :select-percent select-percent))
              (child-one (funcall mutation-operator (copy-seq parent-one)))
              (child-two (funcall mutation-operator (copy-seq parent-two))))
-        (push parent-one new-pool)
-        (push parent-two new-pool)
+        (when mutate-parents
+          (push (funcall mutation-operator parent-one) new-pool)
+          (push (funcall mutation-operator parent-two) new-pool))
+        (unless mutate-parents
+          (push parent-one new-pool)
+          (push parent-two new-pool))
         (when use-crossover
           (let ((children (single-crossover child-one child-two)))
             (push (car children) new-pool)
@@ -174,8 +178,12 @@
              (parent-two (roulette-select gene-pool problem highest-fitness))
              (child-one (funcall mutation-operator (copy-seq parent-one)))
              (child-two (funcall mutation-operator (copy-seq parent-two))))
-        (push parent-one new-pool)
-        (push parent-two new-pool)
+        (when mutate-parents
+          (push (funcall mutation-operator parent-one) new-pool)
+          (push (funcall mutation-operator parent-two) new-pool))
+        (unless mutate-parents
+          (push parent-one new-pool)
+          (push parent-two new-pool))
         (when use-crossover
           (let ((children (single-crossover child-one child-two)))
             (push (car children) new-pool)
@@ -205,7 +213,9 @@
          (selected (truncate-select gene-pool problem
                                     :select-percent select-percent))
          (new-pool (mapcar (lambda (genome)
-                             (mutate-n-bits (copy-seq genome) 1))
+                             (if mutate-parents
+                                 (mutate-n-bits (copy-seq genome) 1)
+                                 genome))
                            selected)))
     (while (< (length new-pool) size)
       (dolist (genome selected)
@@ -289,6 +299,14 @@
           (setf (aref genome index) 1)
           (setf (aref genome index) 0)))))
 
+(defun gene-pool-fitness (problem gene-pool)
+  "Return a list of the fitness of each element in GENE-POOL.  This is
+  used to calculate the typically expensive fitness value once per
+  generation."
+  (mapcar (lambda (genome)
+            (fitness problem genome))
+          gene-pool))
+
 (defun solve (problem pool-size terminator
               &key (genome-bit-distribution 0.5)
                    (interim-result-writer #'default-interim-results)
@@ -333,6 +351,7 @@
            (gene-pool (make-gene-pool pool-size
                                       (genome-length problem)
                                       genome-bit-distribution))
+           (fitness (gene-pool-fitness problem gene-pool))
            (generation 0))
     (while (not (funcall terminator generation gene-pool))
       (when interim-result-writer
@@ -340,3 +359,5 @@
       (setf gene-pool (funcall evolve-gene-pool gene-pool problem))
       (incf generation))
     gene-pool)))
+
+  ;; change to (evolve-gene-pool problem gene-pool gene-pool-fitness)
