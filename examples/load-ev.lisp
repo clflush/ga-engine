@@ -40,6 +40,44 @@
         (format t "Generation = ~A, fitness = ~A~%" generation fitness)
         t))))
 
+(time (let* ((problem *default-ev-problem*)
+             (gene-pool (solve problem 256 (generation-terminator 2000)
+                               :selection-method :tournament-selection
+                               :mutation-rate 0.005
+                               :mutate-parents nil
+                               :use-crossover nil
+                               :interim-result-writer #'ev-interim-result-writer))
+             (best-genome (most-fit-genome gene-pool)))
+        (format t "~%Best = ~F~%Average = ~F~%~%"
+                (fitness problem best-genome)
+                (average-fitness gene-pool))))
+
+#|
+Before gene-pool changes:
+
+Evaluation took:
+  709.576 seconds of real time
+  689.443870 seconds of total run time (686.533049 user, 2.910821 system)
+  [ Run times consist of 7.683 seconds GC time, and 681.761 seconds non-GC time. ]
+  97.16% CPU
+  11 lambdas converted
+  1,976,986,769,394 processor cycles
+  79,145,458,592 bytes consed
+
+After gene-pool changes:
+
+Evaluation took:
+  92.245 seconds of real time
+  69.045109 seconds of total run time (68.334610 user, 0.710499 system)
+  [ Run times consist of 0.808 seconds GC time, and 68.238 seconds non-GC time. ]
+  74.85% CPU
+  60 lambdas converted
+  257,009,255,223 processor cycles
+  3 page faults
+  7,768,214,240 bytes consed
+|#
+
+#|
 (dotimes (i 10)
   (setf *random-state* (make-random-state t))
   (let* ((problem *default-ev-problem*)
@@ -54,7 +92,6 @@
             (r-sequence problem best-genome)
             (average-fitness problem gene-pool))))
 
-#|
 (let* ((problem *default-ev-problem*)
        (gene-pool (solve problem 250 (ev-terminator problem 2000)
                          :selection-method :tournament-selection

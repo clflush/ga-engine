@@ -60,6 +60,36 @@
       (bit-vector->integer bits)
       (- (1+ (bit-vector->integer (bit-not bits))))))
 
+;;; Problem methods.
+
+(defgeneric genome-length (problem)
+  (:documentation
+   "Returns the number of bits required to represent a candidate
+   solution to the PROBLEM."))
+
+(defgeneric fitness (problem genome)
+  (:documentation
+   "Return the fitness of the bit string GENOME in the context of the
+   PROBLEM.  This value is only meaningful in that context."))
+
+(defgeneric fitness-comparator (problem)
+  (:documentation
+   "Return a fitness comparator function that takes two fitnesses and
+   returns T if the first is more fit according to the characteristics
+   of the PROBLEM."))
+
+(defun lesser-comparator (problem)
+  "Return a fitness comparator function that takes two fitnesses and
+  returns T if the first has a lower value for its fitness."
+  (declare (ignore problem))
+  #'<)
+
+(defun greater-comparator (problem)
+  "Return a fitness comparator function that takes two fitnesses and
+  returns T if the first has a higher value for its fitness."
+  (declare (ignore problem))
+  #'>)
+
 ;; The genetic algorithm functions.
 
 (defun make-genome (length &optional (distribution 0.5))
@@ -93,49 +123,104 @@
         (setf (subseq child-one start end) segment-two)
         (setf (subseq child-two start end) segment-one)))))
 
-(defun make-gene-pool (size genome-length &optional (distribution 0.5))
-  "Create a list of SIZE genomes, each of length GENOME-LENGTH."
-  (let ((pool nil))
-    (dotimes (count size pool)
-      (push (make-genome genome-length distribution) pool))))
+(defclass gene-pool ()
+  ((problem :initarg :problem
+            :reader problem)
+   (size :initarg :size
+         :reader size)
+   (initial-distribution :initarg :initial-distribution
+                         :reader initial-distribution
+                         :initform 0.5)
+   (genomes :accessor genomes)
+   (fitnesses :accessor fitnesses)
+   (generation :accessor generation
+               :initform 0))
+  (:documentation "A pool of genomes."))
 
-(defun most-fit-genome (gene-pool fitness-comparator)
-  "Return the most fit genome in GENE-POOL based on FITNESS-COMPARATOR.
-  FITNESS-COMPARATOR must take two genomes as arguments and return T if
-  the first is the the most fit of the two."
-  (reduce (lambda (genome-one genome-two)
-            (if (funcall fitness-comparator genome-one genome-two)
-                genome-one
-                genome-two))
-          gene-pool))
+;; (defun make-gene-pool (size genome-length &optional (distribution 0.5))
+;;   "Create a list of SIZE genomes, each of length GENOME-LENGTH."
+;;   (let ((pool nil))
+;;     (dotimes (count size pool)
+;;       (push (make-genome genome-length distribution) pool))))
+
+(defun make-gene-pool (problem size &optional (distribution 0.5))
+  "Create an instance of a gene-pool."
+  (make-instance 'gene-pool
+                 :problem problem
+                 :size size
+                 :initial-distribution distribution))
+
+(defmethod initialize-instance :after ((gene-pool gene-pool) &rest args)
+  (declare (ignore args))
+  (let ((pool nil))
+    (dotimes (count (size gene-pool))
+      (push (make-genome (genome-length (problem gene-pool))
+                         (initial-distribution gene-pool))
+            pool))
+    (setf (genomes gene-pool) pool)))
+
+(defmethod calculate-fitness ((gene-pool gene-pool))
+  "Calculate the fitnesses for all genomes in the GENE-POOL."
+  (setf (fitnesses gene-pool)
+        (mapcar (lambda (genome)
+                  (fitness (problem gene-pool) genome))
+                (genomes gene-pool))))
+
+(defun best-fitness (fitness-comparator fitnesses)
+  "Return the best fitness value in the list of FITNESSES based on the
+  FITNESS-COMPARATOR."
+  (reduce (lambda (fitness-one fitness-two)
+            (if (funcall fitness-comparator fitness-one fitness-two)
+                fitness-one
+                fitness-two))
+          fitnesses))
+
+(defmethod most-fit-genome ((gene-pool gene-pool))
+  "Return the most fit genome in GENE-POOL."
+  (let* ((best-fitness (best-fitness (fitness-comparator (problem gene-pool))
+                                     (fitnesses gene-pool)))
+         (index (position best-fitness (fitnesses gene-pool))))
+    (elt (genomes gene-pool) index)))
+
+(defmethod average-fitness ((gene-pool gene-pool))
+  "Return the average fitness of the GENE-POOL."
+  (/ (apply #'+ (fitnesses gene-pool)) (size gene-pool)))
 
 (defparameter *tournament-select-percentage* 0.2)
 
-(defun tournament-select (gene-pool problem
+(defun tournament-select (gene-pool
                           &key (select-percent *tournament-select-percentage*))
   "Randomly select a pool of genomes that are TOURNAMENT-SELECT-PERCENTAGE
   of the full GENE-POOL and apply FITNESS-COMPARATOR to return the best one.
   FITNESS-COMPARATOR must take two genomes as arguments and return T if the
   first is the the most fit of the two."
-  (let* ((pool-size (length gene-pool))
+  (let* ((pool-size (size gene-pool))
          (tournament-size (floor (* pool-size select-percent)))
-         (tournament nil))
+         (tournament nil)
+         (fitnesses nil)
+         (indices nil))
     (while (< (length tournament) tournament-size)
-      (pushnew (elt gene-pool (random pool-size)) tournament))
-    (most-fit-genome tournament (fitness-comparator problem))))
+      (let ((index (random pool-size)))
+        (unless (find index indices)
+          (push (elt (genomes gene-pool) index) tournament)
+          (push (elt (fitnesses gene-pool) index) fitnesses)
+          (push index indices))))
+    (let* ((best-fitness
+            (best-fitness (fitness-comparator (problem gene-pool)) fitnesses))
+           (best-index (position best-fitness fitnesses)))
+      (elt tournament best-index))))
 
-
-(defun tournament-evolve (gene-pool problem mutation-operator
+(defun tournament-evolve (gene-pool mutation-operator
                           &key (select-percent *tournament-select-percentage*)
                                (use-crossover nil)
                                (mutate-parents nil))
   "Evolve a new gene pool using tournament selection."
-  (let ((size (length gene-pool))
+  (let ((size (size gene-pool))
         (new-pool nil))
     (while (< (length new-pool) size)
-      (let* ((parent-one (tournament-select gene-pool problem
+      (let* ((parent-one (tournament-select gene-pool
                                             :select-percent select-percent))
-             (parent-two (tournament-select gene-pool problem
+             (parent-two (tournament-select gene-pool
                                             :select-percent select-percent))
              (child-one (funcall mutation-operator (copy-seq parent-one)))
              (child-two (funcall mutation-operator (copy-seq parent-two))))
@@ -152,30 +237,31 @@
         (unless use-crossover
           (push child-one new-pool)
           (push child-two new-pool))))
-    new-pool))
+    (setf (genomes gene-pool) new-pool)))
                           
-(defun roulette-select (gene-pool problem highest-fitness)
+(defun roulette-select (gene-pool best-fitness)
   "Randomly select a genomes from the GENE-POOL returning the first where
-  the fitness of the genome divided by the HIGHEST-FITNESS is greater
+  the fitness of the genome divided by the BEST-FITNESS is greater
   than a randomly generated percentage."
-  (let ((pool-size (length gene-pool)))
-    (do ((genome (elt gene-pool (random pool-size))
-                 (elt gene-pool (random pool-size))))
-        ((>= (/ highest-fitness (fitness problem genome)) (random 1.0))
+  (let ((pool-size (size gene-pool)))
+    (do ((genome (elt (genomes gene-pool) (random pool-size))
+                 (elt (genomes gene-pool) (random pool-size))))
+        ((>= (/ best-fitness (fitness (problem gene-pool) genome))
+             (random 1.0))
          genome))))
+; TODO:  fix above to handle different fitness comparators
 
-(defun roulette-evolve (gene-pool problem mutation-operator
+(defun roulette-evolve (gene-pool mutation-operator
                         &key (use-crossover nil)
                              (mutate-parents nil))
   "Evolve a new gene pool using roulette wheel selection."
-  (let ((size (length gene-pool))
-        (highest-fitness
-         (fitness problem (most-fit-genome gene-pool
-                                           (fitness-comparator problem))))
+  (let ((size (size gene-pool))
+        (best-fitness (best-fitness (fitness-comparator (problem gene-pool))
+                                    (fitnesses gene-pool)))
         (new-pool nil))
     (while (< (length new-pool) size)
-      (let* ((parent-one (roulette-select gene-pool problem highest-fitness))
-             (parent-two (roulette-select gene-pool problem highest-fitness))
+      (let* ((parent-one (roulette-select gene-pool best-fitness))
+             (parent-two (roulette-select gene-pool best-fitness))
              (child-one (funcall mutation-operator (copy-seq parent-one)))
              (child-two (funcall mutation-operator (copy-seq parent-two))))
         (when mutate-parents
@@ -191,26 +277,60 @@
         (unless use-crossover
           (push child-one new-pool)
           (push child-two new-pool))))
-    new-pool))
+    (setf (genomes gene-pool) new-pool)))
+
+(defun all-positions (element sequence)
+  "Return a list of all indices where ELEMENT occurs in SEQUENCE."
+  (let ((positions nil))
+    (dotimes (i (length sequence) (nreverse positions))
+      (when (eq (elt sequence i) element)
+        (push i positions)))))
 
 (defparameter *truncate-select-percentage* 0.5)
 
-(defun truncate-select (gene-pool problem
+(defun truncate-select (gene-pool
                         &key (select-percent *truncate-select-percentage*))
   "Select the top SELECT-PERCENT percentage of the GENE-POOL and return
   them in order of fitness."
-  (let ((comparator (fitness-comparator problem)))
-    (nreverse (nthcdr (floor (* (length gene-pool) select-percent))
-                      (sort (copy-seq gene-pool)
-                            (lambda (x y)
-                              (funcall comparator y x)))))))
+  (let* ((comparator (fitness-comparator (problem gene-pool)))
+         (ordered-fitnesses
+          (remove-duplicates
+           (sort (copy-seq (fitnesses gene-pool))
+                 (lambda (fitness-one fitness-two)
+                   (funcall comparator fitness-one fitness-two)))))
+         (selected-size (floor (* (size gene-pool) select-percent)))
+         (selected nil))
+    (while (< (length selected) selected-size)
+      (let ((indices
+             (all-positions (pop ordered-fitnesses) (fitnesses gene-pool))))
+        (dolist (index indices)
+          (when (< (length selected) selected-size)
+            (push (elt (genomes gene-pool) index) selected)))))
+    (nreverse selected)))
 
-(defun truncate-evolve (gene-pool problem mutation-operator
+
+;; (let* ((comparator (greater-comparator 'foo))
+;;        (fitnesses (list 0 1 2 3 4 5 5 4 3 2 1 0 0))
+;;        (sorted (remove-duplicates (sort (copy-seq fitnesses)
+;;                                         (lambda (x y)
+;;                                           (funcall comparator x y))))))
+;;   (all-positions (pop sorted) fitnesses))
+;; (5 6)
+
+
+
+  ;; (let ((comparator (fitness-comparator (problem gene-pool))))
+  ;;   (nreverse (nthcdr (floor (* (size gene-pool) select-percent))
+  ;;                     (sort (copy-seq (genomes gene-pool))
+  ;;                           (lambda (x y)
+  ;;                             (funcall comparator y x)))))))
+
+(defun truncate-evolve (gene-pool mutation-operator
                         &key (select-percent *truncate-select-percentage*)
                              (mutate-parents t))
   "Evolve a new gene pool using truncation selection."
-  (let* ((size (length gene-pool))
-         (selected (truncate-select gene-pool problem
+  (let* ((size (size gene-pool))
+         (selected (truncate-select gene-pool
                                     :select-percent select-percent))
          (new-pool (mapcar (lambda (genome)
                              (if mutate-parents
@@ -221,42 +341,9 @@
       (dolist (genome selected)
         (when (< (length new-pool) size)
           (push (funcall mutation-operator (copy-seq genome)) new-pool))))
-    new-pool))
+    (setf (genomes gene-pool) new-pool)))
 
 ;; Solution generators
-
-(defgeneric genome-length (problem)
-  (:documentation
-   "Returns the number of bits required to represent a candidate
-   solution to the PROBLEM."))
-
-(defgeneric fitness (problem genome)
-  (:documentation
-   "Return the fitness of the bit string GENOME in the context of the
-   PROBLEM.  This value is only meaningful in that context."))
-
-(defgeneric fitness-comparator (problem)
-  (:documentation
-   "Return a fitness comparator function that takes two genomes and
-   returns T if the first is more fit according to the characteristics
-   of the PROBLEM."))
-
-(defun lesser-comparator (problem)
-  "Return a fitness comparator function that takes two genomes and
-  returns T if the first has a lower value for its fitness."
-  (lambda (genome-one genome-two)
-    (< (fitness problem genome-one) (fitness problem genome-two))))
-
-(defun greater-comparator (problem)
-  "Return a fitness comparator function that takes two genomes and
-  returns T if the first has a higher value for its fitness."
-  (lambda (genome-one genome-two)
-    (> (fitness problem genome-one) (fitness problem genome-two))))
-
-(defun average-fitness (problem gene-pool)
-  "Return the average fitness of the GENE-POOL, in the context of the PROBLEM."
-  (/ (apply #'+ (mapcar (lambda (genome) (fitness problem genome)) gene-pool))
-     (length gene-pool)))
 
 (defgeneric terminator (generation gene-pool)
   (:documentation
@@ -270,21 +357,21 @@
     (declare (ignore gene-pool))
     (>= generation generations)))
 
-(defun fitness-terminator (problem fitness)
+(defun fitness-terminator (fitness)
   "Return a termination function that stops processing when the best
   solution in the gene pool has fitness greater than or equal to FITNESS
   in the context of the PROBLEM."
   (lambda (generation gene-pool)
     (declare (ignore generation))
-    (>= (fitness problem
-                 (most-fit-genome gene-pool (fitness-comparator problem)))
+    (>= (best-fitness (fitness-comparator (problem gene-pool))
+                      (fitnesses gene-pool))
         fitness)))
 
-(defun default-interim-results (problem gene-pool generation)
-  (let ((comparator (fitness-comparator problem)))
-    (format t "~&Generation:  ~D, best fitness = ~A~%"
-            generation
-            (fitness problem (most-fit-genome gene-pool comparator)))))
+(defun default-interim-results (gene-pool generation)
+  (format t "~&Generation:  ~D, best fitness = ~A~%"
+          generation
+          (best-fitness (fitness-comparator (problem gene-pool))
+                        (fitnesses gene-pool))))
 
 (defun mutate-genome (genome rate)
   "Flip bits in the GENOME bit-vector with a percentage chance equal to
@@ -298,14 +385,6 @@
       (if (= 0 (aref genome index))
           (setf (aref genome index) 1)
           (setf (aref genome index) 0)))))
-
-(defun gene-pool-fitness (problem gene-pool)
-  "Return a list of the fitness of each element in GENE-POOL.  This is
-  used to calculate the typically expensive fitness value once per
-  generation."
-  (mapcar (lambda (genome)
-            (fitness problem genome))
-          gene-pool))
 
 (defun solve (problem pool-size terminator
               &key (genome-bit-distribution 0.5)
@@ -328,19 +407,19 @@
                     (mutate-n-bits genome mutation-count)))
                  (t (error "Set exactly one of mutation rate or count."))))
          (make-tournament-evolver (mutation-operator)
-           (lambda (gene-pool problem)
-             (tournament-evolve gene-pool problem mutation-operator
+           (lambda (gene-pool)
+             (tournament-evolve gene-pool mutation-operator
                                 :use-crossover use-crossover
                                 :mutate-parents mutate-parents
                                 :select-percent tournament-select-percentage)))
          (make-roulette-evolver (mutation-operator)
-           (lambda (gene-pool problem)
-             (roulette-evolve gene-pool problem mutation-operator
+           (lambda (gene-pool)
+             (roulette-evolve gene-pool mutation-operator
                               :use-crossover use-crossover
                               :mutate-parents mutate-parents)))
          (make-truncation-evolver (mutation-operator)
-           (lambda (gene-pool problem)
-             (truncate-evolve gene-pool problem mutation-operator
+           (lambda (gene-pool)
+             (truncate-evolve gene-pool mutation-operator
                               :mutate-parents mutate-parents
                               :select-percent truncate-select-percentage))))
     (let* ((mutation-operator (make-mutation-operator))
@@ -351,16 +430,17 @@
               (:roulette-selection (make-roulette-evolver mutation-operator))
               (:truncation-selection
                (make-truncation-evolver mutation-operator))))
-           (gene-pool (make-gene-pool pool-size
-                                      (genome-length problem)
+           (gene-pool (make-gene-pool problem
+                                      pool-size
                                       genome-bit-distribution))
-;           (fitness (gene-pool-fitness problem gene-pool))
            (generation 0))
-    (while (not (funcall terminator generation gene-pool))
-      (when interim-result-writer
-        (funcall interim-result-writer problem gene-pool generation))
-      (setf gene-pool (funcall evolve-gene-pool gene-pool problem))
-      (incf generation))
-    gene-pool)))
+      (calculate-fitness gene-pool)
+      (while (not (funcall terminator generation gene-pool))
+        (when interim-result-writer
+          (funcall interim-result-writer gene-pool generation))
+        (funcall evolve-gene-pool gene-pool)
+        (calculate-fitness gene-pool)
+        (incf generation))
+      gene-pool)))
 
   ;; change to (evolve-gene-pool problem gene-pool gene-pool-fitness)

@@ -209,17 +209,16 @@
   (memoize (greater-comparator problem)))
 ;  (greater-comparator problem))
 
-(defun ev-interim-result-writer (problem gene-pool generation)
+(defun ev-interim-result-writer (gene-pool generation)
   "Write interim results including Rsequence."
-  (let* ((comparator (fitness-comparator problem))
-         (most-fit-genome (most-fit-genome gene-pool comparator)))
+  (let ((most-fit-genome (most-fit-genome gene-pool)))
     (multiple-value-bind (fitness matched missed spurious)
-        (fitness problem most-fit-genome)
+        (fitness (problem gene-pool) most-fit-genome)
       (format t "~&Generation:  ~D, best fitness = ~A (~A/~A/~A), Rsequence = ~A~%"
               generation
               fitness
               matched
               missed
               spurious
-              (r-sequence problem most-fit-genome)))))
+              (r-sequence (problem gene-pool) most-fit-genome)))))
 

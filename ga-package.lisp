@@ -14,7 +14,15 @@
            #:integer->gray-code
            #:gray-code->integer
            #:bit-vector->twos-complement
+           #:fitness
+           #:fitness-comparator
+           #:lesser-comparator
+           #:greater-comparator
            #:make-genome
+           #:problem
+           #:size
+           #:genomes
+           #:fitnesses
            #:mutate-genome
            #:single-crossover
            #:segment-crossover
@@ -23,10 +31,6 @@
            #:tournament-select
            #:evolve-gene-pool
            #:genome-length
-           #:fitness
-           #:fitness-comparator
-           #:lesser-comparator
-           #:greater-comparator
            #:average-fitness
            #:terminator
            #:generation-terminator
