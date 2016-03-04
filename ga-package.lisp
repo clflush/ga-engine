@@ -6,7 +6,7 @@
 
 (defpackage :org.softwarematters.ga
   (:nicknames :ga)
-  (:use :common-lisp)
+  (:use :common-lisp :lparallel)
   (:export #:bit-vector->integer
            #:integer->bit-vector
            #:bit-vector->gray-code
@@ -23,6 +23,8 @@
            #:size
            #:genomes
            #:fitnesses
+           #:best-fitness
+           #:average-fitness
            #:mutate-genome
            #:single-crossover
            #:segment-crossover
@@ -31,7 +33,6 @@
            #:tournament-select
            #:evolve-gene-pool
            #:genome-length
-           #:average-fitness
            #:terminator
            #:generation-terminator
            #:fitness-terminator

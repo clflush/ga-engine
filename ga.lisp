@@ -162,7 +162,7 @@
 (defmethod calculate-fitness ((gene-pool gene-pool))
   "Calculate the fitnesses for all genomes in the GENE-POOL."
   (setf (fitnesses gene-pool)
-        (mapcar (lambda (genome)
+        (pmapcar (lambda (genome)
                   (fitness (problem gene-pool) genome))
                 (genomes gene-pool))))
 
