@@ -6,7 +6,7 @@
 
 (defpackage :org.softwarematters.ga
   (:nicknames :ga)
-  (:use :common-lisp :lparallel)
+  (:use :common-lisp)
   (:export #:bit-vector->integer
            #:integer->bit-vector
            #:bit-vector->gray-code
