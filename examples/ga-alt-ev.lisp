@@ -5,7 +5,7 @@
 
 (in-package :org.softwarematters.ga.ev)
 
-(defclass ev-problem ()
+(defclass alt-ev-problem ()
   ((number-of-possible-sites :initarg :number-of-possible-sites
                              :reader number-of-possible-sites)
    (number-of-binding-sites :initarg :number-of-binding-sites
@@ -21,14 +21,15 @@
    (threshold-start :accessor threshold-start)
    (binding-sites-start :accessor binding-sites-start)
    (binding-sites :accessor binding-sites))
-  (:documentation "The configuration for an ev run."))
+  (:documentation
+   "The configuration for an ev run with an alternative recognizer."))
 
-(defun make-ev-problem (number-of-possible-binding-sites
-                        number-of-binding-sites
-                        binding-site-width
-                        bases-per-integer
-                        &key (overlap-allowed-p nil))
-  (make-instance 'ev-problem
+(defun make-alt-ev-problem (number-of-possible-binding-sites
+                            number-of-binding-sites
+                            binding-site-width
+                            bases-per-integer
+                            &key (overlap-allowed-p nil))
+  (make-instance 'alt-ev-problem
                  :number-of-possible-sites number-of-possible-binding-sites
                  :number-of-binding-sites number-of-binding-sites
                  :binding-site-width binding-site-width
