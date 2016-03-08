@@ -16,7 +16,7 @@
 ;;; generation:
 
 (let* ((problem *default-ev-problem*)
-       (gene-pool (solve problem 64 (generation-terminator 2000)
+       (gene-pool (solve problem 64 (generation-terminator 3000)
                          :selection-method :truncation-selection
                          :mutation-count 1
                          :mutate-parents t
@@ -70,17 +70,13 @@
         (format t "Generation = ~A, fitness = ~A~%" generation fitness)
         t))))
 
-(dotimes (i 10)
-  (setf *random-state* (make-random-state t))
-  (let* ((problem *default-ev-problem*)
-         (gene-pool (solve problem 256 (ev-terminator problem 10000)
-                           :selection-method :tournament-selection
-                           :mutation-rate 0.005
-                           :mutate-parents nil
-                           :use-crossover nil
-                           :interim-result-writer nil))
-         (best-genome (most-fit-genome gene-pool)))
-    (format t "Best = ~F (Rseq = ~F)~%Average = ~F~%~%"
-            (fitness problem best-genome)
-            (r-sequence problem best-genome)
-            (average-fitness gene-pool))))
+(let* ((problem *default-ev-problem*)
+       (gene-pool (solve problem 64 (generation-terminator 3000)
+                         :selection-method :truncation-selection
+                         :mutation-count 1
+                         :mutate-parents t
+                         :interim-result-writer #'ev-interim-result-writer))
+       (best-genome (most-fit-genome gene-pool)))
+  (format t "~%Best = ~F~%Average = ~F~%~%"
+          (fitness problem best-genome)
+          (average-fitness gene-pool)))
