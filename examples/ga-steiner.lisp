@@ -203,10 +203,10 @@
         (+ total-length +unconnected-penalty+))))
 
 (defmethod fitness-comparator ((problem steiner-problem))
-  "Return a fitness comparator function that takes two genomes and
+  "Return a fitness comparator function that takes two fitnesses and
   returns T if the first is more fit according to the characteristics of
   the PROBLEM."
-  (memoize (lesser-comparator problem)))
+  (lesser-comparator problem))
 
 (defun solve-steiner (problem population-size generations mutation-rate)
   "Run the GA engine against the PROBLEM for GENERATIONS generations and
@@ -216,12 +216,11 @@
                            (generation-terminator generations)
                            :selection-method :tournament-selection
                            :mutation-rate mutation-rate
-                           :crossover t))
-         (best-genome (most-fit-genome gene-pool
-                                       (fitness-comparator problem))))
+                           :mutate-parents t
+                           :use-crossover t))
+         (best-genome (most-fit-genome gene-pool)))
     (format t "~%Best = ~F~%Average = ~F~%Nodes = ~S~%Connections = ~S~%"
             (fitness problem best-genome)
-            (average-fitness problem gene-pool)
+            (average-fitness gene-pool)
             (nodes problem best-genome)
             (connections problem best-genome))))
-

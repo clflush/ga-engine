@@ -55,7 +55,7 @@
   (count 1 (bit-eqv genome (target-genome problem))))
 
 (defmethod fitness-comparator ((problem weasel-problem))
-  "Return a fitness comparator function that takes two genomes and
+  "Return a fitness comparator function that takes two fitnesses and
   returns T if the first is more fit according to the characteristics of
   the PROBLEM."
   (greater-comparator problem))
@@ -65,16 +65,13 @@
   (let* ((gene-pool
           (solve problem
                  population-size
-                 (fitness-terminator problem
-                                     (length (target-genome problem)))
+                 (fitness-terminator (length (target-genome problem)))
                  :selection-method :tournament-selection
                  :mutation-rate mutation-rate
-                 :crossover t))
-         (best-genome (most-fit-genome gene-pool
-                                       (fitness-comparator problem))))
+                 :mutate-parents nil
+                 :use-crossover t))
+         (best-genome (most-fit-genome gene-pool)))
     (format t "~%Best = ~F~%Average = ~F~%"
             (fitness problem best-genome)
-            (average-fitness problem gene-pool))))
-
-(solve-weasel (make-weasel-problem "Methinks it is like a weasel") 1000 0.02)
+            (average-fitness gene-pool))))
 
