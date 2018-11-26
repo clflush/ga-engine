@@ -70,7 +70,24 @@
         (format t "Generation = ~A, fitness = ~A~%" generation fitness)
         t))))
 
-(let* ((problem *default-ev-problem*)
+;; (let* ((problem *default-ev-problem*)
+;;        (gene-pool (solve problem 64 (generation-terminator 3000)
+;;                          :selection-method :truncation-selection
+;;                          :mutation-count 1
+;;                          :mutate-parents t
+;;                          :interim-result-writer #'ev-interim-result-writer))
+;;        (best-genome (most-fit-genome gene-pool)))
+;;   (format t "~%Best = ~F~%Average = ~F~%~%"
+;;           (fitness problem best-genome)
+;;           (average-fitness gene-pool)))
+
+(defparameter *overlapping-ev-problem*
+  (make-ev-problem 256 16 6 5 :allow-overlap-p t))
+
+(setf (binding-sites *overlapping-ev-problem*)
+      (list 0 1 3 6 10 15 21 28 36 45 55 66 78 91 105 120))
+
+(let* ((problem *overlapping-ev-problem*)
        (gene-pool (solve problem 64 (generation-terminator 3000)
                          :selection-method :truncation-selection
                          :mutation-count 1
