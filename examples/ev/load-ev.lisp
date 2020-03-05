@@ -1,5 +1,5 @@
-(load (compile-file "../ga-package.lisp"))
-(load (compile-file "../ga.lisp"))
+(load (compile-file "../../ga-package.lisp"))
+(load (compile-file "../../ga.lisp"))
 (load (compile-file "ga-ev-package.lisp"))
 (load (compile-file "ga-ev.lisp"))
 
