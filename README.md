@@ -56,7 +56,7 @@ functions, and core GA capabilities:
     A utility function that returns a ```terminator``` that
     ends a run after a certain number of generations.
   - ```fitness-terminator```
-    A utility function that returns a <code>terminator</code> that
+    A utility function that returns a ```terminator``` that
     ends a run after a certain number of generations.
 * Core Capabilities
   - ```make-genome```

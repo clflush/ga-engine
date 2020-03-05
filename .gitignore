@@ -1,4 +1,5 @@
 *~
 *.dx64fsl
 *.fasl
+/archive/
 /tmp/
